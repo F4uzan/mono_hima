@@ -83,7 +83,11 @@ enum {
 #endif
 
 bool use_spi_crc = 0;
-module_param(use_spi_crc, bool, 0644);
+EXPORT_SYMBOL(use_spi_crc);
+module_param_named(crc, use_spi_crc, bool, 0644);
+MODULE_PARM_DESC(
+	crc,
+	"Enable/disable CRC checking");
 
 #ifdef CONFIG_MMC_UNSAFE_RESUME
 bool mmc_assume_removable;
