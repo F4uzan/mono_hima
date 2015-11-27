@@ -35,6 +35,11 @@ static DEFINE_MUTEX(fsync_mutex);
 bool power_suspend_active __read_mostly = true;
 bool dyn_fsync_active __read_mostly = true;
 
+#ifdef CONFIG_STATE_NOTIFIER
+static void dyn_fsync_power_suspend(void);
+static void dyn_fsync_resume(void);
+#endif
+
 static struct notifier_block notif;
 
 static ssize_t dyn_fsync_active_show(struct kobject *kobj,
@@ -191,7 +196,7 @@ static int dyn_fsync_init(void)
 	notif.notifier_call = state_notifier_callback;
 	if (state_register_client(&notif)) {
 		pr_err("Dynamic Fsync: Failed to register State notifier callback\n");
-		goto err_dev;
+		return -ENOMEM;
 	}
 #endif
 	register_reboot_notifier(&dyn_fsync_notifier);
