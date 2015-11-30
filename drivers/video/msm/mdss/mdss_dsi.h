@@ -451,6 +451,7 @@ struct mdss_dsi_ctrl_pdata {
 
 	bool dfps_status;	/* dynamic refresh status */
 
+	struct timespec wait_until_ts;
 	
 	void *dsi_pwrctrl_data;			
 	struct dsi_panel_cmds cabc_off_cmds;
