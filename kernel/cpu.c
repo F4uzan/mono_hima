@@ -371,8 +371,8 @@ int __ref cpu_down(unsigned int cpu)
 
 	cpu_maps_update_begin();
 
-	// AP: Keep CPU cores 0
-	if ((cpu == 0)
+	// AP: Keep CPU cores 0 online
+	if ((cpu == 0))
 	{
 		err = -EBUSY;
 		goto out;
