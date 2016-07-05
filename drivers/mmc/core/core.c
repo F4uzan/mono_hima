@@ -83,7 +83,7 @@ enum {
 #endif
 
 bool use_spi_crc = 0;
-module_param(use_spi_crc, bool, 0);
+module_param(use_spi_crc, bool, 0644);
 
 #ifdef CONFIG_MMC_UNSAFE_RESUME
 bool mmc_assume_removable;
