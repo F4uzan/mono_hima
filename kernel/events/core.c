@@ -1409,7 +1409,11 @@ static int __perf_remove_from_context(void *info)
 }
 
 #ifdef CONFIG_SMP
+#ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
+static void __cpuinit perf_retry_remove(struct remove_event *rep)
+#else
 static void perf_retry_remove(struct remove_event *rep)
+#endif
 {
 	int up_ret;
 	struct perf_event *event = rep->event;
