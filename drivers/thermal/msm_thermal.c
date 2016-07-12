@@ -81,18 +81,6 @@
 		_val |= 2;				\
 } while (0)
 
-static int big_core_start;
-
-// Cluster thermal threshold for control frequency
-unsigned int temp_threshold;
-unsigned int temp_big_threshold;
-unsigned int temp_step = 2;
-unsigned int temp_count_max = 3;
-module_param(temp_threshold, int, 0644);
-module_param(temp_big_threshold, int, 0644);
-module_param(temp_step, int, 0644);
-module_param(temp_count_max, int, 0644);
-
 static struct msm_thermal_data msm_thermal_info;
 static struct delayed_work check_temp_work;
 static bool core_control_enabled;
@@ -136,6 +124,7 @@ static bool ocr_nodes_called;
 static bool ocr_probed;
 static bool ocr_reg_init_defer;
 static bool hotplug_enabled;
+static bool interrupt_mode_enable;
 static bool msm_thermal_probed;
 static bool gfx_crit_phase_ctrl_enabled;
 static bool gfx_warm_phase_ctrl_enabled;
@@ -1271,24 +1260,20 @@ static void update_cluster_freq(void)
 	}
 }
 
-static int cur_index = 0;
-
 static void do_cluster_freq_ctrl(long temp)
 {
 	uint32_t _cluster = 0;
 	int _cpu = -1, freq_idx = 0;
-	int index;
+	bool mitigate = false;
 	struct cluster_info *cluster_ptr = NULL;
 
-	if (temp < temp_threshold)
+	if (temp >= msm_thermal_info.limit_temp_degC)
+		mitigate = true;
+	else if (temp < msm_thermal_info.limit_temp_degC -
+		 msm_thermal_info.temp_hysteresis_degC)
+		mitigate = false;
+	else
 		return;
-
-	index = (temp - temp_threshold) / temp_step + 1;
-	if (index == cur_index)
-		return;
-	if (index > temp_count_max)
-		index = temp_count_max;
-	cur_index = index;
 
 	get_online_cpus();
 	for (; _cluster < core_ptr->entity_count; _cluster++) {
@@ -1296,9 +1281,18 @@ static void do_cluster_freq_ctrl(long temp)
 		if (!cluster_ptr->freq_table)
 			continue;
 
-		freq_idx = cluster_ptr->freq_idx
-			- msm_thermal_info.bootup_freq_step * index;
+		if (mitigate)
+			freq_idx = max_t(int, cluster_ptr->freq_idx_low,
+				(cluster_ptr->freq_idx
+				- msm_thermal_info.bootup_freq_step));
+		else
+			freq_idx = min_t(int, cluster_ptr->freq_idx_high,
+				(cluster_ptr->freq_idx
+				+ msm_thermal_info.bootup_freq_step));
+		if (freq_idx == cluster_ptr->freq_idx)
+			continue;
 
+		cluster_ptr->freq_idx = freq_idx;
 		for_each_cpu_mask(_cpu, cluster_ptr->cluster_cores) {
 			if (!(msm_thermal_info.bootup_freq_control_mask
 				& BIT(_cpu)))
@@ -2416,8 +2410,8 @@ static void __ref do_core_control(long temp)
 
 	mutex_lock(&core_control_mutex);
 	if (msm_thermal_info.core_control_mask &&
-		temp >= temp_big_threshold) {
-		for (i = big_core_start; i < num_possible_cpus(); i++) { // Only on/off big cores
+		temp >= msm_thermal_info.core_limit_temp_degC) {
+		for (i = num_possible_cpus(); i > 0; i--) {
 			if (!(msm_thermal_info.core_control_mask & BIT(i)))
 				continue;
 			if (cpus_offlined & BIT(i) && !cpu_online(i))
@@ -2437,8 +2431,9 @@ static void __ref do_core_control(long temp)
 			break;
 		}
 	} else if (msm_thermal_info.core_control_mask && cpus_offlined &&
-		temp <= (temp_big_threshold - msm_thermal_info.core_temp_hysteresis_degC)) {
-		for (i = big_core_start; i < num_possible_cpus(); i++) { // Only on/off big cores
+		temp <= (msm_thermal_info.core_limit_temp_degC -
+			msm_thermal_info.core_temp_hysteresis_degC)) {
+		for (i = 0; i < num_possible_cpus(); i++) {
 			if (!(cpus_offlined & BIT(i)))
 				continue;
 			cpus_offlined &= ~BIT(i);
@@ -2928,7 +2923,7 @@ static void do_freq_control(long temp)
 	if (!freq_table_get)
 		return;
 
-	if (temp >= temp_threshold) {
+	if (temp >= msm_thermal_info.limit_temp_degC) {
 		if (limit_idx == limit_idx_low)
 			return;
 
@@ -2936,7 +2931,7 @@ static void do_freq_control(long temp)
 		if (limit_idx < limit_idx_low)
 			limit_idx = limit_idx_low;
 		max_freq = table[limit_idx].frequency;
-	} else if (temp < temp_threshold -
+	} else if (temp < msm_thermal_info.limit_temp_degC -
 		 msm_thermal_info.temp_hysteresis_degC) {
 		if (limit_idx == limit_idx_high)
 			return;
@@ -4154,6 +4149,10 @@ static void __ref disable_msm_thermal(void)
 
 static void interrupt_mode_init(void)
 {
+	if (!msm_thermal_probed) {
+		interrupt_mode_enable = true;
+		return;
+	}
 	if (polling_enabled) {
 		pr_info("Interrupt mode init\n");
 		polling_enabled = 0;
@@ -5484,6 +5483,11 @@ static int probe_cc(struct device_node *node, struct msm_thermal_data *data,
 		hotplug_enabled = 1;
 	}
 
+	key = "qcom,core-limit-temp";
+	ret = of_property_read_u32(node, key, &data->core_limit_temp_degC);
+	if (ret)
+		goto read_node_fail;
+
 	key = "qcom,core-temp-hysteresis";
 	ret = of_property_read_u32(node, key, &data->core_temp_hysteresis_degC);
 	if (ret)
@@ -5809,17 +5813,7 @@ static int msm_thermal_dev_probe(struct platform_device *pdev)
 		goto fail;
 
 	key = "qcom,limit-temp";
-	ret = of_property_read_u32(node, key, &temp_threshold);
-	if (ret)
-		goto fail;
-
-	key = "qcom,limit-temp-big";
-	ret = of_property_read_u32(node, key, &temp_big_threshold);
-	if (ret)
-		goto fail;
-
-	key = "qcom,big-core-start";
-	ret = of_property_read_u32(node, key, &big_core_start);
+	ret = of_property_read_u32(node, key, &data.limit_temp_degC);
 	if (ret)
 		goto fail;
 
@@ -5898,6 +5892,11 @@ static int msm_thermal_dev_probe(struct platform_device *pdev)
 	msm_thermal_ioctl_init();
 	ret = msm_thermal_init(&data);
 	msm_thermal_probed = true;
+
+	if (interrupt_mode_enable) {
+		interrupt_mode_init();
+		interrupt_mode_enable = false;
+	}
 
 	return ret;
 fail:
@@ -5996,6 +5995,7 @@ int __init msm_thermal_late_init(void)
 		}
 	}
 	msm_thermal_add_mx_nodes();
+	interrupt_mode_init();
 	create_cpu_topology_sysfs();
 	create_thermal_debugfs();
 	msm_thermal_add_bucket_info_nodes();
