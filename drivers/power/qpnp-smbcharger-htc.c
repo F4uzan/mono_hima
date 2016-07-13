@@ -3433,7 +3433,7 @@ static void check_cable_type(struct work_struct *work)
 	} else {
 		switch (usb_supply_type) {
 		case POWER_SUPPLY_TYPE_UNKNOWN :
-			connect_type = CONNECT_TYPE_UNKNOWN;
+			connect_type = CONNECT_TYPE_AC;
 			break;
 		case POWER_SUPPLY_TYPE_USB_DCP :
 			connect_type = CONNECT_TYPE_AC;
