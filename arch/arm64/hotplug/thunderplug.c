@@ -20,7 +20,11 @@
 #include <linux/input.h>
 #include <linux/slab.h>
 #include <linux/cpu.h>
+#ifdef CONFIG_STATE_NOTIFIER
+#include <linux/state_notifier.h>
+#else
 #include <linux/lcd_notify.h>
+#endif
 #include <linux/cpufreq.h>
 #include "thunderplug.h"
 
@@ -477,7 +481,12 @@ static int lcd_notifier_callback(struct notifier_block *nb,
                                  unsigned long event, void *data)
 {
        switch (event) {
+
+#ifdef CONFIG_STATE_NOTIFIER
+       case STATE_NOTIFIER_ACTIVE:
+#else
        case LCD_EVENT_ON_START:
+#endif
 			isSuspended = false;
 #ifdef CONFIG_SCHED_HMP
 			if(tplug_hp_style==1)
@@ -491,11 +500,17 @@ static int lcd_notifier_callback(struct notifier_block *nb,
 		                      msecs_to_jiffies(10));
 			pr_info("thunderplug : resume called\n");
                break;
+#ifndef CONFIG_STATE_NOTIFIER
        case LCD_EVENT_ON_END:
                break;
        case LCD_EVENT_OFF_START:
                break;
+#endif
+#ifdef CONFIG_STATE_NOTIFIER
+       case STATE_NOTIFIER_SUSPEND:
+#else
        case LCD_EVENT_OFF_END:
+#endif
 			isSuspended = true;
 			pr_info("thunderplug : suspend called\n");
                break;
@@ -702,7 +717,11 @@ static int __init thunderplug_init(void)
 
 		lcd_worker.notifier_call = lcd_notifier_callback;
 
+#ifdef CONFIG_STATE_NOTIFIER
+        state_register_client(&lcd_worker);
+#else
         lcd_register_client(&lcd_worker);
+#endif
 
 		pr_info("%s : registering input boost", THUNDERPLUG);
 		ret = input_register_handler(&tplug_input_handler);
