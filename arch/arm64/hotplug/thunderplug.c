@@ -477,7 +477,7 @@ static void __cpuinit tplug_work_fn(struct work_struct *work)
 
 }
 
-static int lcd_notifier_callback(struct notifier_block *nb,
+static int notifier_callback(struct notifier_block *nb,
                                  unsigned long event, void *data)
 {
        switch (event) {
@@ -715,7 +715,7 @@ static int __init thunderplug_init(void)
                 kobject_put(thunderplug_kobj);
         }
 
-		lcd_worker.notifier_call = lcd_notifier_callback;
+		lcd_worker.notifier_call = notifier_callback;
 
 #ifdef CONFIG_STATE_NOTIFIER
         state_register_client(&lcd_worker);
