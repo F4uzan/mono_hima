@@ -82,7 +82,7 @@
 		_val |= 2;				\
 } while (0)
 
-#ifdef THERMAL_FRANCO
+#ifdef CONFIG_THERMAL_FRANCO
 unsigned int temp_threshold = 85;
 module_param(temp_threshold, int, 0755);
 #endif
@@ -2983,7 +2983,7 @@ static void do_freq_control(long temp)
 	if (!freq_table_get)
 		return;
 
-#ifdef THERMAL_FRANCO
+#ifdef CONFIG_THERMAL_FRANCO
 	if (temp >= temp_threshold) {
 #else
 	if (temp >= msm_thermal_info.limit_temp_degC) {
@@ -2995,7 +2995,7 @@ static void do_freq_control(long temp)
 		if (limit_idx < limit_idx_low)
 			limit_idx = limit_idx_low;
 		max_freq = table[limit_idx].frequency;
-#ifdef THERMAL_FRANCO
+#ifdef CONFIG_THERMAL_FRANCO
 	} else if (temp < temp_threshold -
 #else
 	} else if (temp < msm_thermal_info.limit_temp_degC -
@@ -4282,7 +4282,7 @@ static struct kernel_param_ops module_ops = {
 module_param_cb(enabled, &module_ops, &enabled, 0644);
 MODULE_PARM_DESC(enabled, "enforce thermal limit on cpu");
 
-#ifdef THERMAL_NEOBUDDY
+#ifdef CONFIG_THERMAL_NEOBUDDY
 /* Poll ms */
 module_param_named(poll_ms, msm_thermal_info.poll_ms, uint, 0664);
 
