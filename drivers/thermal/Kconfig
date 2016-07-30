@@ -242,4 +242,43 @@ config THERMAL_QPNP_ADC_TM
 	  Disabling the thermal zone device via the mode file results in disabling
 	  the sensor. Also able to set threshold temperature for both hot and cold
 	  and update when a threshold is reached.
+
+config THERMAL_MSM_CUSTOM
+	bool "Customized MSM Thermal"
+	help
+	  Enabling this will allow you to use a customized version of Qualcomm's
+	  MSM thermal driver.
+
+choice
+	prompt "Select MSM Thermal driver"
+	default THERMAL_STOCK
+	help
+	  This option selects which MSM thermal driver should be used, custom
+	  drivers requires THERMAL_MSM_CUSTOM to be toggled on. If in doubt,
+	  select THERMAL_STOCK since it is the stock MSM thermal.
+
+config THERMAL_STOCK
+	bool "Qualcomm stock MSM Thermal"
+	help
+	Use the stock thermal driver provided by Qualcomm, gives the least
+	customization, but it's useful in case there's a problem with the
+	modified drivers.
+
+config THERMAL_FRANCO
+	bool "franciscofranco's modified MSM Thermal"
+	depends on THERMAL_MSM_CUSTOM
+	help
+	Use the modified thermal driver by franciscofranco, this enables
+	a sysfs to allow an easy configuration of thermal throttling temperature
+	in userspace while being close to stock driver.
+
+config THERMAL_NEOBUDDY
+	bool "neobuddy89's modified MSM Thermal"
+	depends on THERMAL_MSM_CUSTOM
+	help
+	Use the modified thermal driver by neobuddy89, which allows many
+	customizations, including thermal temperature threshold, customizable
+	control mask, and configurable poll time.
+endchoice
+
 endif

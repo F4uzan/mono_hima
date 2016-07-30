@@ -82,8 +82,10 @@
 		_val |= 2;				\
 } while (0)
 
+#ifdef THERMAL_FRANCO
 unsigned int temp_threshold = 85;
 module_param(temp_threshold, int, 0755);
+#endif
 
 static struct msm_thermal_data msm_thermal_info;
 static struct delayed_work check_temp_work;
@@ -2981,7 +2983,11 @@ static void do_freq_control(long temp)
 	if (!freq_table_get)
 		return;
 
+#ifdef THERMAL_FRANCO
 	if (temp >= temp_threshold) {
+#else
+	if (temp >= msm_thermal_info.limit_temp_degC) {
+#endif
 		if (limit_idx == limit_idx_low)
 			return;
 
@@ -2989,7 +2995,11 @@ static void do_freq_control(long temp)
 		if (limit_idx < limit_idx_low)
 			limit_idx = limit_idx_low;
 		max_freq = table[limit_idx].frequency;
+#ifdef THERMAL_FRANCO
 	} else if (temp < temp_threshold -
+#else
+	} else if (temp < msm_thermal_info.limit_temp_degC -
+#endif
 		 msm_thermal_info.temp_hysteresis_degC) {
 		if (limit_idx == limit_idx_high)
 			return;
@@ -4272,6 +4282,7 @@ static struct kernel_param_ops module_ops = {
 module_param_cb(enabled, &module_ops, &enabled, 0644);
 MODULE_PARM_DESC(enabled, "enforce thermal limit on cpu");
 
+#ifdef THERMAL_NEOBUDDY
 /* Poll ms */
 module_param_named(poll_ms, msm_thermal_info.poll_ms, uint, 0664);
 
@@ -4292,6 +4303,7 @@ module_param_named(core_control_mask, msm_thermal_info.core_control_mask,
 			uint, 0664);
 module_param_named(freq_mitig_control_mask,
 		   msm_thermal_info.freq_mitig_control_mask, uint, 0644);
+#endif
 
 static ssize_t show_cc_enabled(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf)
