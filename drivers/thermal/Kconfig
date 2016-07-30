@@ -252,7 +252,7 @@ config THERMAL_MSM_CUSTOM
 
 config THERMAL_STOCK
 	bool "Qualcomm stock MSM Thermal"
-	depends on THERMAL_MONITOR
+	depends on THERMAL_MONITOR && !THERMAL_MSM_CUSTOM
 	help
 	  Use the stock thermal driver provided by Qualcomm, gives the least
 	  customization, but it's useful in case there's a problem with the
