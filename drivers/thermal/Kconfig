@@ -267,7 +267,6 @@ config THERMAL_STOCK
 config THERMAL_FRANCO
 	bool "franciscofranco's modified MSM Thermal"
 	depends on THERMAL_MSM_CUSTOM
-	depends on !THERMAL_NEOBUDDY
 	help
 	Use the modified thermal driver by franciscofranco, this enables
 	a sysfs to allow an easy configuration of thermal throttling temperature
@@ -276,7 +275,6 @@ config THERMAL_FRANCO
 config THERMAL_NEOBUDDY
 	bool "neobuddy89's modified MSM Thermal"
 	depends on THERMAL_MSM_CUSTOM
-	depends on !THERMAL_FRANCO
 	help
 	Use the modified thermal driver by neobuddy89, which allows many
 	customizations, including thermal temperature threshold, customizable
