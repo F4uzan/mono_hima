@@ -83,7 +83,7 @@
 } while (0)
 
 #ifdef CONFIG_THERMAL_FRANCO
-unsigned int temp_threshold = 85;
+unsigned int temp_threshold = 70;
 module_param(temp_threshold, int, 0755);
 #endif
 
